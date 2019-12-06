@@ -1,16 +1,46 @@
 version: 2
 jobs:
-  build:
-    docker:
-      - image: debian:stretch
-
+  kind:
+    machine:
+      enabled: true
+      # docker_layer_caching: true
+      image: circleci/classic:201808-01
     steps:
-      - checkout
+    - checkout
+    - run: 
+        name: Install kubectl 
+        command: |
+          curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.16.3/bin/linux/amd64/kubectl
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin
+      
+    - run:
+        name: Install kubernetes cluster with kind 
+        command: |
+          curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/v0.6.1/kind-linux-amd64
+          chmod +x kind 
+          sudo mv kind /usr/local/bin
 
-      - run:
-          name: Greeting
-          command: echo Hello, world.
+    - run:
+        name: Start cluster
+        command: |
+          kind create cluster --name test-cluster --image kindest/node:v1.14.9
 
-      - run:
-          name: Print the Current Time
-          command: date
+    - run:
+        name: Waiting for ready
+        command: |
+          READY=""
+          while [ "$READY" != "True" ]
+          do
+            sleep 2
+            READY=`kubectl get node -o=jsonpath='{range .items[*]}{range @.status.conditions[?(@.type == "Ready")]}{@.status}{end}{end}'`
+          done
+          echo "Node is ready"
+          echo "Current running pods are the follows:"
+          kubectl get --all-namespaces pod
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - kind 
