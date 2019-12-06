@@ -55,6 +55,11 @@ jobs:
           echo "Current running pods are the follows:"
           kubectl get --all-namespaces pod
 
+    - run:
+        name: Test with conftest
+        command: |
+          cd manifests/apps/echo && kustomize build . | conftest test -
+
 workflows:
   version: 2
   test:
